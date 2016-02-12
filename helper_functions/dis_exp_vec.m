@@ -4,7 +4,7 @@ function [out] = dis_exp_vec(T_mat,D_mat,censor_mat,ind)
 % their corresponding distances
 % out will have fields Wi_vec, TW_vec, DWi_vec, DTW_vec
 % Pass the ind structure and has indeces for the Wi, T-W, edges etc.
-% Here zero out negative edges
+% censor_mat is the matrix with ones for within-tissue class labels
 
 N=size(T_mat,1);
 
