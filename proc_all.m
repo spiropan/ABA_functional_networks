@@ -6,8 +6,8 @@ collect_data=0; % If already assembled MA data matrix keep this 0 to save time
 adjust_brain_batch=0; % If already regressed out brain and batch id from MA matrix to save time
 ABA_dir='/nfs/zorba/ABA/Norm_March13/';
 files_dir='/home/spantazatos/Dropbox/Postdoc/Science_Commentary/';
-addpath([files_dir 'helper_functions'])
 
+addpath([files_dir 'helper_functions'])
 % Import the date file for which samples were used in the science paper
 % (S1). data(:,1) will have donor ids, dat(:,3) will have well id
 [dat(:,1),dat(:,2),dat(:,3),dat(:,4),dat(:,5),dat(:,6),dat(:,7),dat(:,8),dat(:,9),...
@@ -104,7 +104,7 @@ end
 %% Extract the indeces for 13 networks, 4 networks of interest and from each subject
 ABA_dir='/nfs/zorba/ABA/Norm_March13/';
 files_dir='/home/spantazatos/Dropbox/Postdoc/Science_Commentary/';
-if ~exist('MA')
+if ~exist('MA_resid')
     load([ABA_dir '/Science_Paper_MA.mat']);
 end
 addpath([files_dir 'helper_functions'])
@@ -140,16 +140,17 @@ end
 % within-tissue edges
 T_mat=corr(MA_resid); T_mat(find(T_mat<0))=0; 
 T_mat(find(censor_mat==1))=0;
-[results_resid]=compute_SF(T_mat,ind,1000);
+[results_resid]=compute_SF(T_mat,ind,10);
  save([ABA_dir '/Science_Paper_MA_resid.mat'],'MA_resid','donor_ind','dat','gen','ABA_dir','files_dir',...
      'censor_mat','results_resid')
  
 %% Here compute distances between all samples to compute distance matrix.
-% columns 10-12 have MNI coordinates, 13 has network name
+% columns 10-12 have MNI coordinates, 13 has network name. Panel C in
+% writeup
 ABA_dir='/nfs/zorba/ABA/Norm_March13/';
 files_dir='/home/spantazatos/Dropbox/Postdoc/Science_Commentary/';
-if ~exist('MA')
-    load([ABA_dir '/Science_Paper_MA.mat']);
+if ~exist('MA_resid')
+    load([ABA_dir '/Science_Paper_MA_resid.mat']);
 end
 addpath([files_dir 'helper_functions'])
 
@@ -194,14 +195,14 @@ h=gca;
 set(h,'XTickLabel',{'','Tissue','<4 mm','<8 mm','<12 mm','<16 mm','<20 mm','<24 mm'},'fontsize',12)
 
 %% Plot distance vs. tissue-tissue correlationin the within-network (Wi) and 
-% out of network (T-W) edges
+% out of network (T-W) edges. Panel B in writeup
 % Wi          = dark grey, 
 % T-W         = light grey, 
 % Order in ind.Wi is dDMN, Salience, Sensorimotor, Visuospatial
 ABA_dir='/nfs/zorba/ABA/Norm_March13/';
 files_dir='/home/spantazatos/Dropbox/Postdoc/Science_Commentary/';
-if ~exist('MA')
-    load([ABA_dir '/Science_Paper_MA.mat']);
+if ~exist('MA_resid')
+    load([ABA_dir '/Science_Paper_MA_resid.mat']);
 end
 addpath([files_dir 'helper_functions'])
 
@@ -247,6 +248,8 @@ DTW_vec(find(isnan(DTW_vec)==1))=[];
 TW_vec(find(isnan(TW_vec)==1))=[];
 
 tot_exp_vec=[Wi_vec; TW_vec]; tot_dis_vec=[DWi_vec; DTW_vec];
+
+% here plot best fit line
 hold on; plot_linear(tot_dis_vec,tot_exp_vec,'k');
 ylim([0,0.67])
 xlim([0,180])
@@ -255,133 +258,52 @@ set(h_legend,'fontsize',13);
 xlabel('Euclidean Distance: mm','fontsize',16)
 ylabel('Tissue-tissue correlation','fontsize',16)
 
+% Here compute linear correlation and p-value
 [B,dev,stats]=glmfit(tot_dis_vec,tot_exp_vec);
 [rho,pval]=corr(tot_dis_vec,tot_exp_vec);
 
-
-%% Here can try a simple 2-sample ttest 
-% This part will do 2-sample t-test 
+%% Here can try regressing out distance as well
 ABA_dir='/nfs/zorba/ABA/Norm_March13/';
 files_dir='/home/spantazatos/Dropbox/Postdoc/Science_Commentary/';
-if ~exist('MA')
-    load([ABA_dir '/Science_Paper_MA.mat']);
+if ~exist('MA_resid')
+    load([ABA_dir '/Science_Paper_MA_resid.mat']);
 end
 addpath([files_dir 'helper_functions'])
 
-% Here grab the 136 gene names and extract from MA data
-genes=importdata([files_dir '/136_genes.txt']);
-[c,ia,ib]=intersect(gen(:,3),genes);
+T_mat=corr(MA_resid); N=size(T_mat,1);
 
-Wi_ind=[];
-for i=1:length(ind.Wi)
-    Wi_ind=[Wi_ind ind.W_all{ind.Wi(i)}];
-end
-[p,h,ci,stats]=ttest2(MA_resid(:,Wi_ind)',MA_resid(:,ind.W_all{9})');
-[h,p,ci,stats]=ttest2(MA_resid(:,ind.W_all{10})',MA_resid(:,ind.W_all{9})');
-T_mat_small=corr(MA_resid(ia,:));
-T_mat_small(find(T_mat_small<0))=0; % Here zero out negative edges
-T_mat_small(find(censor_mat==1))=0;
-%T_mat_small(find(D<20))=0;
-[results_136genes]=compute_SF(T_mat_small,ind,1000);
+% Here zero out negative edges and remove within-tissue edges
+T_mat(find(T_mat<0))=NaN; T_mat(find(censor_mat==1))=NaN;
+D_mat=D; 
 
-%% here just determine distance-expression correlation using the 136 consensus genes
-% 
-exp_vec=T_mat_small(get_indeces(N));
-D_mat=D; D_mat(find(T_mat_small<=0))=0;
-dis_vec=D_mat(get_indeces(N));
+% initialize matrix that will hold adjusted correlations
+T_mat_dis=zeros(size(T_mat)); 
 
-exp_vec(find(exp_vec==0))=[];
-dis_vec(find(dis_vec==0))=[];
+disp('Ok regressing out distance')
+exp_vec=T_mat(get_indeces(N)); zero_out=find(isnan(exp_vec)==1); exp_vec(zero_out)=NaN;
+dis_vec=D(get_indeces(N)); dis_vec(zero_out)=NaN;
 
-%% Plot the effect of 136 consensus genes on mean tissue-tissue correlations binned by distance
-ABA_dir='/nfs/zorba/ABA/Norm_March13/';
-files_dir='/home/spantazatos/Dropbox/Postdoc/Science_Commentary/';
-if ~exist('MA')
-    load([ABA_dir '/Science_Paper_MA.mat']);
-end
-addpath([files_dir 'helper_functions']);
+[B,dev,STATS]=glmfit(dis_vec,exp_vec);
+yresid=STATS.resid;
+% Here use polyfit to fit cubic fit to the data
+%p=polyfit(dis_vec,exp_vec,1);
+%yfit=polyval(p,dis_vec);
+%yresid=exp_vec-yfit;
 
-% Here grab the 136 gene names and extract from MA data
-genes=importdata([files_dir '/136_genes.txt']);
-[c,ia,ib]=intersect(gen(:,3),genes);
+% Here populate the T_mat_dis (lower triangle) with values of the
+% residuals. NaN from original correction will be carried over and removed
+T_mat_dis(get_indeces(N))=yresid;
+T_mat_dis(find(isnan(T_mat_dis)==1))=0; % Here set negative edges to zero using the original T_mat!
+%T_mat_dis(find(T_mat_dis<0))=0; % Here zero out the 
+%T_mat_dis(find(D<Dthr))=0; % here also remove edges below min distance
 
-T_mat_cons=corr(MA_resid(ia,:));
-T_mat=corr(MA_resid);
+[results_regress]=compute_SF(T_mat_dis,ind,1000);
 
-consensus=dis_exp_vec(T_mat_cons,D,censor_mat,ind);
-total=dis_exp_vec(T_mat,D,censor_mat,ind);
-
-% Make the plots
-% Make the distance break points
-Dbr=[0:8:144]; Xtick={};
-Wi_total=[]; TW_total=[]; Wi_cons=[]; TW_cons=[];
-for i=1:length(Dbr)-1
-    Wi_total(1,i)=median(total.Wi_vec(find(total.DWi_vec>Dbr(i) & total.DWi_vec<Dbr(i+1))));
-    TW_total(1,i)=median(total.TW_vec(find(total.DTW_vec>Dbr(i) & total.DTW_vec<Dbr(i+1))));
-    Wi_cons(1,i)=median(consensus.Wi_vec(find(consensus.DWi_vec>Dbr(i) & consensus.DWi_vec<Dbr(i+1))));
-    TW_cons(1,i)=median(consensus.TW_vec(find(consensus.DTW_vec>Dbr(i) & consensus.DTW_vec<Dbr(i+1))));
-    %Xtick=[Xtick [int2str(Dbr(i)) ':' int2str(Dbr(i+1))]];
-end
-kill_figures
-%plot(Wi_total,'ko-')
-%hold on; plot(TW_total,'k*-')
-%hold on; plot(Wi_cons,'ks-')
-%hold on; plot(TW_cons,'k.-')
-
-plot(Wi_total,'o-','Color',[0,0,0])
-hold on; plot(TW_total,'*-','Color',[0,0,0,])
-hold on; plot(Wi_cons,'o-','Color',[0.5,0.5,0.5])
-hold on; plot(TW_cons,'*-','Color',[0.5,0.5,0.5])
-
-h_legend=legend('Wi: all genes','T-W: all genes','Wi: consensus','T-W: consensus')
-set(h_legend,'fontsize',12);
-xlabel('Distance Bins: [0:8:144] mm','fontsize',16)
-ylabel('Median tissue-tissue correlation','fontsize',16)
-xlim([0,19])
-ylim([0.05,0.16])
-% Here are the edges that show the spike in the graph (128-136)
-% in Wi for consensus genes
-dmin=128; dmax=136;
-%length(consensus.Wi_vec(find(consensus.DWi_vec > dmin & consensus.DWi_vec < dmax)))
-%std(consensus.Wi_vec(find(consensus.DWi_vec > dmin & consensus.DWi_vec < dmax)))
-%plot(consensus.Wi_vec(find(consensus.DWi_vec > dmin & consensus.DWi_vec < dmax)))
-
-%% Here plot strength fraction as a function of (binned) distances
-ABA_dir='/nfs/zorba/ABA/Norm_March13/';
-files_dir='/home/spantazatos/Dropbox/Postdoc/Science_Commentary/';
-if ~exist('MA')
-    load([ABA_dir '/Science_Paper_MA.mat']);
-end
-addpath([files_dir 'helper_functions'])
-
-% Standard preprocessing below, remove negative edges and within-tissue
-% edges
-T_mat=corr(MA_resid);
-T_mat(find(T_mat<0))=0;
-T_mat(find(censor_mat==1))=0;
-
-% Make the plots
-% Make the distance break points
-Dbr=[0:8:144]; Xtick={}; null_size=1000;
-SF=zeros(null_size+1,length(Dbr)-1);
-for i=1:length(Dbr)-1
-    tmp=zeros(size(T_mat));
-    tmp(find(D>Dbr(i) & D<Dbr(i+1)))=T_mat(find(D>Dbr(i) & D<Dbr(i+1)));
-    out(i)=compute_SF(tmp, ind, null_size);
-    SF(1,i)=out(i).real_SF;
-    SF(2:end,i)=out(i).null_SF';
-    %Xtick=[Xtick [int2str(Dbr(i)) ':' int2str(Dbr(i+1))]];
-end
-results.accuracy=SF;
-kill_figures
-save('to_plot','results');
-spider_SVM_plot({'to_plot.mat'},[1:length(Dbr)-1],{'Real SF','Null_SF'})
-h_legend=legend('Real SF','Null SF')
-set(h_legend,'fontsize',14)
-%h=gca;
-%set(h,'XTickLabel',{'','Tissue','<4 mm','<8 mm','<12 mm','<16 mm','<20 mm','<24 mm'},'fontsize',12)
-ylabel('Strength Fraction','fontsize',14)
-xlabel('Distance: [0:8:144] mm bins','fontsize',14)
+% Here compute model fit if used polyfit
+%SSresid=sum(yresid.^2);
+%SStotal=(length(exp_vec)-1) * var(exp_vec);
+%rsq=1 - SSresid/SStotal
+%rsq_adj = 1 -SSresid/SStotal * (length(exp_vec)-1)/(length(exp_vec)-length(p))
 
 %% Here determine the DS of the 136 genes using the DS_genes.csv file
 ABA_dir='/nfs/zorba/ABA/Norm_March13/'
@@ -396,9 +318,9 @@ genes=importdata([files_dir '/136_genes.txt']);
 
 % Here import the DS genes listed in Hawryzlyzc 2015
 % and find the DS score for the 136 genes
-DS_genes=importdata([files_dir '/DS_genes.csv'])
+DS_genes=importdata([files_dir '/DS_genes_local.csv'])
 [c,ia,ib]=intersect(DS_genes.textdata(2:end,1),genes,'stable');
-cons_DS=DS_genes.data(ia,1);
+cons_DS=DS_genes.data(ia,4); % Index 4 is for cerebral cortex
 genes=genes(ib);
 
 
