@@ -70,6 +70,7 @@ end
 addpath([files_dir 'helper_functions'])
 
 % Create regressor for brain id
+adjust_brain_batch=1
 if adjust_brain_batch==1
     brain_ids=unique(dat(2:end,1)); X1=zeros(size(dat(2:end,1),1),1); % Initialize brainid regressor
     for i=1:length(brain_ids)
@@ -96,7 +97,7 @@ if adjust_brain_batch==1
         [b,dev,stats]=glmfit(X2D(:,2:end),stats1.resid);
         MA_resid(g,:)=stats.resid';
     end
-    save([ABA_dir '/Science_Paper_MA_resid.mat'],'MA_resid','donor_ind','dat','gen','ABA_dir','files_dir')
+    %save([ABA_dir '/Science_Paper_MA_resid.mat'],'MA_resid','donor_ind','dat','gen','ABA_dir','files_dir')
 else
     load([ABA_dir '/Science_Paper_MA_resid.mat'])
 end
@@ -141,8 +142,8 @@ end
 T_mat=corr(MA_resid); T_mat(find(T_mat<0))=0; 
 T_mat(find(censor_mat==1))=0;
 [results_resid]=compute_SF(T_mat,ind,10);
- save([ABA_dir '/Science_Paper_MA_resid.mat'],'MA_resid','donor_ind','dat','gen','ABA_dir','files_dir',...
-     'censor_mat','results_resid')
+ %save([ABA_dir '/Science_Paper_MA_resid.mat'],'MA_resid','donor_ind','dat','gen','ABA_dir','files_dir',...
+     %'censor_mat','results_resid')
  
 %% Here compute distances between all samples to compute distance matrix.
 % columns 10-12 have MNI coordinates, 13 has network name. Panel C in
@@ -151,6 +152,7 @@ ABA_dir='/nfs/zorba/ABA/Norm_March13/';
 files_dir='/home/spantazatos/Dropbox/Postdoc/Science_Commentary/';
 if ~exist('MA_resid')
     load([ABA_dir '/Science_Paper_MA_resid.mat']);
+    load([ABA_dir '/Science_Paper_MA.mat']);
 end
 addpath([files_dir 'helper_functions'])
 
@@ -171,14 +173,14 @@ end
 
 % Here remove edges according to min distances specificied in Dthr
 Dthr=[4:4:24];
-T_mat=corr(MA_resid);
+T_mat=corr(MA);
 T_mat(find(T_mat<0))=0; % Here zero out negative edges
 T_mat(find(censor_mat==1))=0; % Here remove the tissue-tissue-edges too
 
 for d=1:length(Dthr)
     NewT_mat=T_mat;
     NewT_mat(find(D<=Dthr(d)))=0; % Here zero out distances <X mm.
-    [results_MinDis(d).out]=compute_SF(NewT_mat,ind,1000);
+    [results_MinDis(d).out]=compute_SF(NewT_mat,ind,200);
 end
 
 % Here plot the strength fractions for various corrections
@@ -207,10 +209,11 @@ end
 addpath([files_dir 'helper_functions'])
 
 T_mat=corr(MA_resid); N=size(T_mat,1);
+D_mat=D; 
 
 % Here zero out negative edges
+D_mat(find(T_mat<0))=NaN; % Make sure to do D_mat first here
 T_mat(find(T_mat<0))=NaN; 
-D_mat=D; D_mat(find(T_mat<0))=NaN;
 
 % Here create a figure 
 % here remove tissue-tissue connections
@@ -220,23 +223,39 @@ D_mat(find(censor_mat==1))=NaN;
 
 % here grab T_W indeces
 disp('Working on T-W')
-TW_mat=NaN(size(T_mat)); TW_mat(ind.W_all{9},ind.W_all{9})=T_mat(ind.W_all{9},ind.W_all{9});
-TW_vec=TW_mat(get_indeces(N));
-DTW_mat=D_mat; DTW_mat(find(isnan(TW_mat)==1))=NaN;
-DTW_vec=DTW_mat(get_indeces(N));
+% First define T_vec (total vector of edges strengths and distances
+T_ind=get_indeces(N);
+T_vec=T_mat(T_ind); D_vec=D_mat(T_ind);
+
+% Now collect vector indeces of all W within network edges to subtract
+% from the T_vec
+for i=1:length(ind.W)
+    disp(['working on ' int2str(ind.W(i))])
+    pairs=nchoosek(ind.W_all{ind.W(i)},2); % This to generate all unique pairs among these indeces
+    pairs=[pairs; pairs(:,2) pairs(:,1)]; % here to add symmetric columns   
+    % here convert the within network i,j edges to vector indeces
+    [ind_to_remove]=sub2ind(size(T_mat),pairs(:,1),pairs(:,2));
+    [c,ia,ib]=intersect(T_ind,ind_to_remove); % Here to find only the lower triangle vectorized indeces
+    T_ind(ia)=[];
+end
+
+TW_vec=T_mat(T_ind); DTW_vec=D_mat(T_ind);
 %scatter(DTW_vec, TW_vec,'bo');
 scatter(DTW_vec, TW_vec,[],[0.7,0.7,0.7],'filled');
 
-% Here grab all the Wi indeces
+% Here grab all the Wi edges and distances
 disp('working on Wi')
-Wi_ind=[];
+Wi_vec=[]; DWi_vec=[];
 for i=1:length(ind.Wi)
-    Wi_ind=[Wi_ind ind.W_all{ind.Wi(i)}];
+    disp(['working on ' int2str(i)])
+    % here extract the within network edges
+    Wi{i}=T_mat(ind.W_all{ind.Wi(i)},ind.W_all{ind.Wi(i)});
+    % here create vector of all 4 within network edge strengths 
+    Wi_vec=[Wi_vec; Wi{i}(get_indeces(size(Wi{i},1)))];
+    % Do the same for the distances    
+    DWi{i}=D_mat(ind.W_all{ind.Wi(i)},ind.W_all{ind.Wi(i)});
+    DWi_vec=[DWi_vec; DWi{i}(get_indeces(size(Wi{i},1)))];
 end
-Wi_mat=NaN(size(T_mat)); Wi_mat(Wi_ind,Wi_ind)=T_mat(Wi_ind,Wi_ind);
-Wi_vec=Wi_mat(get_indeces(N)); 
-DWi_mat=D_mat; DWi_mat(find(isnan(Wi_mat)==1))=NaN;
-DWi_vec=DWi_mat(get_indeces(N));
 
 %hold on; scatter(DWi_vec,Wi_vec,'go');
 hold on; scatter(DWi_vec, Wi_vec,[],[0.5,0.5,0.5],'filled');
@@ -261,6 +280,11 @@ ylabel('Tissue-tissue correlation','fontsize',16)
 % Here compute linear correlation and p-value
 [B,dev,stats]=glmfit(tot_dis_vec,tot_exp_vec);
 [rho,pval]=corr(tot_dis_vec,tot_exp_vec);
+
+% here examine differences in distance between Wi and T-W
+DWi_mean=mean(DWi_vec)
+DTW_mean=mean(DTW_vec)
+[h,p,ci,stats]=ttest2(DWi_vec, DTW_vec)
 
 %% Here can try regressing out distance as well
 ABA_dir='/nfs/zorba/ABA/Norm_March13/';
