@@ -7,8 +7,8 @@ function [out] = random_clusters(dummy);
 % (i.e. about 500 samples within networks, rest our of network, with about 12
 % within nextwork clusters
 num_clusters=13;
-radius=20;
-dis_btw_clus=40; % at least twice the radius to make sure points are non-overlapping
+radius=24;
+dis_btw_clus=48; % at least twice the radius to make sure points are non-overlapping
 
 coords=load('Cortical_MNI_coords.csv');
 num_pts=size(coords,1);
@@ -17,17 +17,17 @@ for c=1:num_clusters,
     % here check to make sure the new point is far enough 
     % from all previous points
     if c > 1
-        for p=1:size(clus_centers,1)      
-            ind=floor(rand(1)*num_pts);
-            dd=euc_dis(coords(ind,:),clus_centers(p,:));
-            if dd > dis_btw_clus
-                disp('Ok found a new sphere center')
-                clus_centers(c,:)=coords(ind,:);
+        dd=0; % initialize the distance between clus_centers
+        while min(dd) <= dis_btw_clus % Keep finding new ind until distance is greater than dis_btw_clus
+            ind=ceil(rand(1)*num_pts); % Find a random cluster center
+            for p=1:size(clus_centers,1)                       
+                dd(p)=euc_dis(coords(ind,:),clus_centers(p,:)); % here dd is vector of distances to previous clus_centers             
             end
         end
+        clus_centers(c,:)=coords(ind,:);
     else
         % This for the first point
-        ind=floor(rand(1)*num_pts);
+        ind=ceil(rand(1)*num_pts);
         clus_centers(c,:)=coords(ind,:); 
     end
     
@@ -45,6 +45,7 @@ end
 % Now get the rest of the indeces that aren't in the above
 all_wi=[];
 for c=1:length(cluster)
+    % This to find the largest clusters
     all_wi=[all_wi cluster{c}];
 end
 [ZrestofBrain]=setdiff([1:size(coords,1)],all_wi);
@@ -52,6 +53,13 @@ end
 % Here make the final cell array which will replace the 
 % ind.W_all cell array in the real analysis. 
 % ZrestofBrain should be the 9th array in the cell
-out=[cluster(1:8) ZrestofBrain cluster(9:end)];
+out.W_all=[cluster(1:8) ZrestofBrain cluster(9:end)];
+
+% Here define the within network clusters to be the largest four
+for c=1:length(out.W_all)
+    size_clus(c)=length(out.W_all{c});
+end
+[Y,I]=sort(size_clus,'descend');
+out.Wi=I(2:5); % Start from two because ZrestofBrain is largest
 
 

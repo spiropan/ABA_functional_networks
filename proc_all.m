@@ -347,5 +347,30 @@ DS_genes=importdata([files_dir '/DS_genes_local.csv'])
 cons_DS=DS_genes.data(ia,4); % Index 4 is for cerebral cortex
 genes=genes(ib);
 
+%% Here run simulation for randomly selected clusters
+ABA_dir='/nfs/zorba/ABA/Norm_March13/'
+files_dir='/home/spantazatos/Dropbox/Postdoc/Science_Commentary/'
+if ~exist('MA_resid')
+    load([ABA_dir '/Science_Paper_MA_resid.mat'])
+end
+addpath([files_dir 'helper_functions'])
 
+% Replicate primary analyses in Richiardi et. al. 
+% Compute the total tissue similarity matrix, zero out negative edges and
+% within-tissue edges
+T_mat=corr(MA_resid); T_mat(find(T_mat<0))=0; 
+T_mat(find(censor_mat==1))=0;
+
+% here create random clusters and replace the ind.W_all cell array and 
+% recompute the SF n times
+
+for n=1:200
+    ind_rand(n)=ind;
+    tmp=random_clusters(1);
+    ind_rand(n).W_all=tmp.W_all;
+    ind_rand(n).Wi=tmp.Wi;
+    [results_rand(n)]=compute_SF(T_mat,ind_rand(n),200);
+end
+
+    
 
