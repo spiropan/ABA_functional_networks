@@ -360,17 +360,34 @@ addpath([files_dir 'helper_functions'])
 % within-tissue edges
 T_mat=corr(MA_resid); T_mat(find(T_mat<0))=0; 
 T_mat(find(censor_mat==1))=0;
+results=compute_SF(T_mat,ind,1000);
 
 % here create random clusters and replace the ind.W_all cell array and 
 % recompute the SF n times
-
-for n=1:200
+for n=1:1000
     ind_rand(n)=ind;
     tmp=random_clusters(1);
     ind_rand(n).W_all=tmp.W_all;
     ind_rand(n).Wi=tmp.Wi;
-    [results_rand(n)]=compute_SF(T_mat,ind_rand(n),200);
+    [results_rand(n)]=compute_SF(T_mat,ind_rand(n),1000);
 end
 
-    
+save('Random_Results','results_rand','results')
+
+% Here create a plot of the results
+ylim=50
+subplot(2,2,1)
+hist(results.null_SF); 
+hold on; plot(results.real_SF,[0:1:ylim],'k-','LineWidth',2);
+xlim([0.004,0.0065])
+subplot(2,2,2)
+hist(results_rand(1).null_SF);
+hold on; plot(results_rand(1).real_SF,[0:0.1:ylim],'k-','LineWidth',2);
+xlim([0.008,0.015])
+subplot(2,2,3)
+hist(results_rand(2).null_SF);
+hold on; plot(results_rand(2).real_SF,[0:0.1:ylim],'k-','LineWidth',2);
+subplot(2,2,4)
+hist(results_rand(3).null_SF);
+hold on; plot(results_rand(3).real_SF,[0:0.1:ylim],'k-','LineWidth',2);
 
