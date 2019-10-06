@@ -348,10 +348,11 @@ cons_DS=DS_genes.data(ia,4); % Index 4 is for cerebral cortex
 genes=genes(ib);
 
 %% Here run simulation for randomly selected clusters
-ABA_dir='/nfs/zorba/ABA/Norm_March13/'
-files_dir='/home/spantazatos/Dropbox/Postdoc/Science_Commentary/'
+% ABA_dir='/nfs/zorba/ABA/Norm_March13/'
+ABA_dir='C:\Users\spiropan\Documents\Norm_March13' % '/nfs/zorba/ABA/Norm_March13/'
+files_dir='E:\Dropbox\Postdoc\Science_Commentary\' % '/home/spantazatos/Dropbox/Postdoc/Science_Commentary/'
 if ~exist('MA_resid')
-    load([ABA_dir '/Science_Paper_MA_resid.mat'])
+    load([ABA_dir '\Science_Paper_MA_resid.mat'])
 end
 addpath([files_dir 'helper_functions'])
 
@@ -360,16 +361,16 @@ addpath([files_dir 'helper_functions'])
 % within-tissue edges
 T_mat=corr(MA_resid); T_mat(find(T_mat<0))=0; 
 T_mat(find(censor_mat==1))=0;
-results=compute_SF(T_mat,ind,1000);
+results=compute_SF(T_mat,ind,100);
 
 % here create random clusters and replace the ind.W_all cell array and 
 % recompute the SF n times
-for n=1:1000
+for n=1:100
     ind_rand(n)=ind;
     tmp=random_clusters(1);
     ind_rand(n).W_all=tmp.W_all;
     ind_rand(n).Wi=tmp.Wi;
-    [results_rand(n)]=compute_SF(T_mat,ind_rand(n),1000);
+    [results_rand(n)]=compute_SF(T_mat,ind_rand(n),100);
 end
 
 save('Random_Results','results_rand','results')
@@ -390,4 +391,3 @@ hold on; plot(results_rand(2).real_SF,[0:0.1:ylim],'k-','LineWidth',2);
 subplot(2,2,4)
 hist(results_rand(3).null_SF);
 hold on; plot(results_rand(3).real_SF,[0:0.1:ylim],'k-','LineWidth',2);
-
