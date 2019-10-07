@@ -1,5 +1,4 @@
-function [out] = random_clusters(dummy);
-% function [out] = random_clusters(dummy);
+function [out] = random_clusters();
 % This assumes Cortical_MNI_coords.csv file is in same directory as the
 % function
 
@@ -18,13 +17,15 @@ function [out] = random_clusters(dummy);
 % resting state fMRI networks as in Figure 1 of the 2017 reply by
 % Richiardi. 
 
+% Set below parameters. Here each network is comprised of 3 clusters. 
 % UPDATE: 
 num_clusters=39;
-radius=16;
-dis_btw_clus=32; % at least twice the radius to make sure points are non-overlapping
+radius=14;
 % UPDATE:
 num_networks=13;
 
+
+dis_btw_clus=radius*2; % at least twice the radius to make sure points are non-overlapping
 coords=load('Cortical_MNI_coords.csv');
 num_pts=size(coords,1);
 
@@ -66,9 +67,9 @@ end
 tmp=randperm(num_clusters);
 starti=1;
 for i=1:num_networks
-    inds=tmp(starti:starti+2)
+    inds=tmp(starti:starti+2);
     super_cluster{i}=cat(2,cluster{[inds]});
-    starti=starti+3
+    starti=starti+3;
 end
 cluster=super_cluster; % replace cluster with super_clusters
 

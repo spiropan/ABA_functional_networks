@@ -350,41 +350,48 @@ genes=genes(ib);
 %% Here run simulation for randomly selected clusters
 % ABA_dir='/nfs/zorba/ABA/Norm_March13/'
 ABA_dir='C:\Users\spiropan\Documents\Norm_March13' % '/nfs/zorba/ABA/Norm_March13/'
-files_dir='E:\Dropbox\Postdoc\Science_Commentary\' % '/home/spantazatos/Dropbox/Postdoc/Science_Commentary/'
+
 if ~exist('MA_resid')
     load([ABA_dir '\Science_Paper_MA_resid.mat'])
 end
-addpath([files_dir 'helper_functions'])
+addpath(['.\helper_functions'])
 
 % Replicate primary analyses in Richiardi et. al. 
 % Compute the total tissue similarity matrix, zero out negative edges and
 % within-tissue edges
+null_size=1000
 T_mat=corr(MA_resid); T_mat(find(T_mat<0))=0; 
 T_mat(find(censor_mat==1))=0;
-results=compute_SF(T_mat,ind,100);
+results=compute_SF(T_mat,ind,null_size);
 
-% here create random clusters and replace the ind.W_all cell array and 
-% recompute the SF n times
+% here create 100 random networks and replace the ind.W_all cell array and 
+% recompute the SF each time
 for n=1:100
     ind_rand(n)=ind;
-    tmp=random_clusters(1);
+    tmp=random_clusters();
     ind_rand(n).W_all=tmp.W_all;
     ind_rand(n).Wi=tmp.Wi;
-    [results_rand(n)]=compute_SF(T_mat,ind_rand(n),100);
+    [results_rand(n)]=compute_SF(T_mat,ind_rand(n),null_size);
 end
 
+disp('number of null networks with SF <0.05 uncorrected')
+for n=1:100, pval_vec(n)=results_rand(n).pvalue; end
+length(find(pval_vec<0.05))
+
 save('Random_Results','results_rand','results')
+
+% plot the distances as in Figure 1 of the reply from Richiardi (2017)
+[median_real,median_rand]=plot_distances(ind,ind_rand,D);
 
 % Here create a plot of the results
 ylim=50
 subplot(2,2,1)
 hist(results.null_SF); 
 hold on; plot(results.real_SF,[0:1:ylim],'k-','LineWidth',2);
-xlim([0.004,0.0065])
+xlim([0.004,0.007])
 subplot(2,2,2)
 hist(results_rand(1).null_SF);
 hold on; plot(results_rand(1).real_SF,[0:0.1:ylim],'k-','LineWidth',2);
-xlim([0.008,0.015])
 subplot(2,2,3)
 hist(results_rand(2).null_SF);
 hold on; plot(results_rand(2).real_SF,[0:0.1:ylim],'k-','LineWidth',2);
