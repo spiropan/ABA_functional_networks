@@ -1,4 +1,4 @@
-function [out] = random_clusters();
+function [out] = random_clusters(coords,dat);
 % This assumes Cortical_MNI_coords.csv file is in same directory as the
 % function
 
@@ -23,31 +23,50 @@ num_clusters=39;
 radius=14;
 % UPDATE:
 num_networks=13;
+make_centers_Z_restOfBrain=1;
 
-
+if make_centers_Z_restOfBrain==1
+    inds_Z_restOfBrain=cell_exp_ind(dat(2:end,13),'Z_restOfBrain');
+else
+    inds_Z_restOfBrain=[];
+end
+    
 dis_btw_clus=radius*2; % at least twice the radius to make sure points are non-overlapping
-coords=load('Cortical_MNI_coords.csv');
 num_pts=size(coords,1);
 
 for c=1:num_clusters,
     % here check to make sure the new point is far enough 
     % from all previous points
     if c > 1
-        disp('assigning new cluster')
+        disp('ok here')
         disp(int2str(c))
         dd=0; % initialize the distance between clus_centers
         while min(dd) <= dis_btw_clus % Keep finding new ind until distance is greater than dis_btw_clus
-            ind=ceil(rand(1)*num_pts); % Find a random cluster center
+            if make_centers_Z_restOfBrain==1
+                disp('assigning new cluster in Z_restOfBrain')
+                ind=inds_Z_restOfBrain(randi(length(inds_Z_restOfBrain))); % find random cluster center in Z_restOfBrain
+            else
+                disp('assigning new cluster')
+                ind=ceil(rand(1)*num_pts); % Find a random cluster center
+            end
             for p=1:size(clus_centers,1)                       
                 dd(p)=euc_dis(coords(ind,:),clus_centers(p,:)); % here dd is vector of distances to previous clus_centers             
             end
         end
         clus_centers(c,:)=coords(ind,:);
+        clus_centers_ind(c,1)=ind;
     else
         disp('assigned first cluster')
         % This for the first point
-        ind=ceil(rand(1)*num_pts);
+        if make_centers_Z_restOfBrain==1
+            disp('assigning first cluster in Z_restOfBrain')
+        	ind=inds_Z_restOfBrain(randi(length(inds_Z_restOfBrain))); % find random cluster center in Z_restOfBrain
+        else
+            disp('assigning new cluster')
+            ind=ceil(rand(1)*num_pts); % Find a random cluster center
+        end
         clus_centers(c,:)=coords(ind,:); 
+        clus_centers_ind(c,1)=ind;
     end
     
     % now find all points within a radius of this point
