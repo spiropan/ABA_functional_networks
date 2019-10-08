@@ -1,4 +1,4 @@
-function [median_real, median_rand] = plot_distances(ind,ind_rand,D);
+function [median_real,median_rand,medians_rand] = plot_distances(ind,ind_rand,D);
 % Use this function to plot average distances of the real vs null networks
 % as in Figure 1 of the 2017 reply by Richiardi
 
@@ -6,10 +6,11 @@ function [median_real, median_rand] = plot_distances(ind,ind_rand,D);
 
 % Create vector for the distances from the null networks
 X_rand=[]; G_rand=[];
-for n=1:size(ind_rand)
+for n=1:length(ind_rand)
     [X_tmp,G_tmp]=return_XG(ind_rand(n),D);
     X_rand=[X_rand; X_tmp];
     G_rand=[G_rand; G_tmp];
+    medians_rand(n,1)=median(X_tmp);
 end
 
 X=[X_real; X_rand];

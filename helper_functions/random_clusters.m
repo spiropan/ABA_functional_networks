@@ -17,14 +17,16 @@ function [out] = random_clusters(coords,dat);
 % resting state fMRI networks as in Figure 1 of the 2017 reply by
 % Richiardi. 
 
-% Set below parameters. Here each network is comprised of 3 clusters. 
-% UPDATE: 
-num_clusters=39;
-radius=14;
-% UPDATE:
-num_networks=13;
+% Set below parameters. Here each network is comprised of 2 or 3 clusters. 
+% UPDATED CODE TO SIMULATE rsMRI NETWORS MORE CLOSELY:
+num_distributed_nets=10; num_oneClus_nets=3; % These should add to 13
+num_clusters_per_dist_net=3;
+radius=15; % Radius of each cluster
+
+num_networks=num_distributed_nets+num_oneClus_nets;
 make_centers_Z_restOfBrain=1;
 
+num_clusters=num_networks*num_clusters_per_dist_net+num_oneClus_nets;
 if make_centers_Z_restOfBrain==1
     inds_Z_restOfBrain=cell_exp_ind(dat(2:end,13),'Z_restOfBrain');
 else
@@ -85,10 +87,14 @@ end
 % between the comprising clusters
 tmp=randperm(num_clusters);
 starti=1;
-for i=1:num_networks
-    inds=tmp(starti:starti+2);
+for i=1:num_distributed_nets
+    inds=tmp(starti:starti+num_clusters_per_dist_net-1);
     super_cluster{i}=cat(2,cluster{[inds]});
-    starti=starti+3;
+    starti=starti+num_clusters_per_dist_net;
+end
+for i=num_distributed_nets+1:num_distributed_nets+num_oneClus_nets
+    super_cluster{i}=cluster{[tmp(starti)]};
+    starti=starti+1;
 end
 cluster=super_cluster; % replace cluster with super_clusters
 
