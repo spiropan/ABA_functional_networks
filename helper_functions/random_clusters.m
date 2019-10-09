@@ -1,4 +1,4 @@
-function [out] = random_clusters(coords,dat);
+function [out] = random_clusters(coords,dat,radius);
 % This assumes Cortical_MNI_coords.csv file is in same directory as the
 % function
 
@@ -21,7 +21,7 @@ function [out] = random_clusters(coords,dat);
 % UPDATED CODE TO SIMULATE rsMRI NETWORS MORE CLOSELY:
 num_distributed_nets=10; num_oneClus_nets=3; % These should add to 13
 num_clusters_per_dist_net=3;
-radius=15; % Radius of each cluster
+%radius=8; % Radius of each cluster
 
 num_networks=num_distributed_nets+num_oneClus_nets;
 make_centers_Z_restOfBrain=1;

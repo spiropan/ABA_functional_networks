@@ -348,18 +348,18 @@ cons_DS=DS_genes.data(ia,4); % Index 4 is for cerebral cortex
 genes=genes(ib);
 
 %% Here run simulation for randomly selected clusters
-%ABA_dir='/nfs/zorba/ABA/Norm_March13/'
-ABA_dir='C:\Users\spiropan\Documents\Norm_March13' % '/nfs/zorba/ABA/Norm_March13/'
+ABA_dir='/nfs/zorba/ABA/Norm_March13/'
+%ABA_dir='C:\Users\spiropan\Documents\Norm_March13' % '/nfs/zorba/ABA/Norm_March13/'
 
 if ~exist('MA_resid')
-    load([ABA_dir '\Science_Paper_MA_resid.mat'])
+    load([ABA_dir '/Science_Paper_MA_resid.mat'])
 end
-addpath(['.\helper_functions'])
+addpath(['./helper_functions'])
 
 % Replicate primary analyses in Richiardi et. al. 
 % Compute the total tissue similarity matrix, zero out negative edges and
 % within-tissue edges
-null_size=20
+null_size=200
 T_mat=corr(MA_resid); T_mat(find(T_mat<0))=0; 
 T_mat(find(censor_mat==1))=0;
 results=compute_SF(T_mat,ind,null_size);
@@ -368,26 +368,40 @@ results=compute_SF(T_mat,ind,null_size);
 % recompute the SF each time
 coords=load('Cortical_MNI_coords.csv'); 
 
-for n=1:20
-    ind_rand(n)=ind;
-    [tmp]=random_clusters(coords,dat);
-    %tmp=random_clusters_orig();
-    ind_rand(n).W_all=tmp.W_all;
-    ind_rand(n).Wi=tmp.Wi;
-    [results_rand(n)]=compute_SF(T_mat,ind_rand(n),null_size);
+clus_radius=[6:15];
+for r = 1:length(clus_radius),
+    for n=1:200
+        ind_rand(n)=ind;
+        [tmp]=random_clusters(coords,dat,clus_radius(r));
+        %tmp=random_clusters_orig();
+        ind_rand(n).W_all=tmp.W_all;
+        ind_rand(n).Wi=tmp.Wi;
+        [results_rand(n)]=compute_SF(T_mat,ind_rand(n),null_size);
+        num_Wi_samples(n)=length(cat(2,tmp.W_all{[1:8,10:end]}))
+    end
+    
+    % plot the distances as in Figure 1 of the reply from Richiardi (2017)
+    [median_real(r),median_dist_rand(r),medians_dist_rand{r}]=plot_distances(ind,ind_rand,D);
+
+    disp('percent of null networks with SF <0.05 uncorrected')
+    for n=1:length(results_rand), pval_vec(n)=results_rand(n).pvalue; end
+    perc_sig(r)=length(find(pval_vec<0.05))/length(pval_vec);
+    median_Wi_samples(r)=median(num_Wi_samples);
 end
 
-%save('Random_Results','results_rand','results')
+disp('correlation between percent significance and cluster size is:')
+[r,p]=corr(perc_sig',clus_radius')
 
-% plot the distances as in Figure 1 of the reply from Richiardi (2017)
-[median_real,median_rand,medians_rand]=plot_distances(ind,ind_rand,D);
+disp('correlation between clus radius and median number of Wi samples:')
+[r,p]=corr(median_Wi_samples',clus_radius')
 
-disp('percent of null networks with SF <0.05 uncorrected')
-for n=1:length(results_rand), pval_vec(n)=results_rand(n).pvalue; end
-length(find(pval_vec<0.05))/length(pval_vec)
+disp('correlation between percent significant SFs and median number of Wi samples:')
+[r,p]=corr(median_Wi_samples',perc_sig')
 
-disp('correlation between p-values and median distances of null networks is:')
-[r,p]=corr(medians_rand,pval_vec')
+    %save('Random_Results','results_rand','results')
+
+% disp('correlation between p-values and median distances of null networks is:')
+% [r,p]=corr(medians_rand,pval_vec')
 
 % Here create a plot of the results
 % ylim=50
