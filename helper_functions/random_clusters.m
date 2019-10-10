@@ -17,16 +17,17 @@ function [out] = random_clusters(coords,dat,radius);
 % resting state fMRI networks as in Figure 1 of the 2017 reply by
 % Richiardi. 
 
-% Set below parameters. Here each network is comprised of 2 or 3 clusters. 
-% UPDATED CODE TO SIMULATE rsMRI NETWORS MORE CLOSELY:
-num_distributed_nets=10; num_oneClus_nets=3; % These should add to 13
-num_clusters_per_dist_net=3;
-%radius=8; % Radius of each cluster
-
-num_networks=num_distributed_nets+num_oneClus_nets;
+% Set below parameters. Here each network is comprised of 1, 2 or 3 clusters. 
+% UPDATED CODE TO SIMULATE rsMRI NETWORKS BETTER
+% User settable parameters below -----------------------------------------
+num_threeClus_nets=9; num_twoClus_nets=3; num_oneClus_nets=1; % These should add to 13
 make_centers_Z_restOfBrain=1;
+% ----------------------------------------------------------------------
 
-num_clusters=num_networks*num_clusters_per_dist_net+num_oneClus_nets;
+% total number of clusters and networks
+num_networks=num_threeClus_nets+num_twoClus_nets+num_oneClus_nets;
+num_clusters=num_threeClus_nets*3 + num_twoClus_nets*2 + num_oneClus_nets
+
 if make_centers_Z_restOfBrain==1
     inds_Z_restOfBrain=cell_exp_ind(dat(2:end,13),'Z_restOfBrain');
 else
@@ -40,8 +41,6 @@ for c=1:num_clusters,
     % here check to make sure the new point is far enough 
     % from all previous points
     if c > 1
-        disp('ok here')
-        disp(int2str(c))
         dd=0; % initialize the distance between clus_centers
         while min(dd) <= dis_btw_clus % Keep finding new ind until distance is greater than dis_btw_clus
             if make_centers_Z_restOfBrain==1
@@ -87,13 +86,22 @@ end
 % between the comprising clusters
 tmp=randperm(num_clusters);
 starti=1;
-for i=1:num_distributed_nets
-    inds=tmp(starti:starti+num_clusters_per_dist_net-1);
+% Here create the 3 clus networks
+for i=1:num_threeClus_nets
+    inds=tmp(starti:starti+2);
     super_cluster{i}=cat(2,cluster{[inds]});
-    starti=starti+num_clusters_per_dist_net;
+    starti=starti+3;
 end
-for i=num_distributed_nets+1:num_distributed_nets+num_oneClus_nets
-    super_cluster{i}=cluster{[tmp(starti)]};
+% Here create the 2 clus networks
+for i=num_threeClus_nets+1:num_threeClus_nets+num_twoClus_nets
+    inds=tmp(starti:starti+1);
+    super_cluster{i}=cat(2,cluster{[inds]});
+    starti=starti+2;
+end
+% here create the 1 clus network
+for i=num_threeClus_nets+num_twoClus_nets+1:num_threeClus_nets+num_twoClus_nets+num_oneClus_nets
+    inds=tmp(starti);
+    super_cluster{i}=cat(2,cluster{[inds]});
     starti=starti+1;
 end
 cluster=super_cluster; % replace cluster with super_clusters
