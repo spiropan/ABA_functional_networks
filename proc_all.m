@@ -201,12 +201,12 @@ set(h,'XTickLabel',{'','Tissue','<4 mm','<8 mm','<12 mm','<16 mm','<20 mm','<24 
 % Wi          = dark grey, 
 % T-W         = light grey, 
 % Order in ind.Wi is dDMN, Salience, Sensorimotor, Visuospatial
-ABA_dir='/nfs/zorba/ABA/Norm_March13/';
-files_dir='/home/spantazatos/ABA_functional_networks/';
+%ABA_dir='/nfs/zorba/ABA/Norm_March13/';
+%files_dir='/home/spantazatos/ABA_functional_networks/';
 if ~exist('MA_resid')
     load([ABA_dir '/Science_Paper_MA_resid.mat']);
 end
-addpath([files_dir 'helper_functions'])
+%addpath([files_dir 'helper_functions'])
 
 T_mat=corr(MA_resid); N=size(T_mat,1);
 D_mat=D; 
@@ -217,7 +217,7 @@ T_mat(find(T_mat<0))=NaN;
 
 % Here create a figure 
 % here remove tissue-tissue connections
-kill_figures
+
 T_mat(find(censor_mat==1))=NaN;
 D_mat(find(censor_mat==1))=NaN;
 
@@ -377,11 +377,11 @@ ABA_dir='/nfs/zorba/ABA/Norm_March13/'
 if ~exist('MA_resid')
     load([ABA_dir 'Science_Paper_MA_resid.mat'])
 end
-addpath(['./helper_functions'])
+addpath(['helper_functions'])
 
 % Replicate primary analyses in Richiardi et. al. 
 % Compute the total tissue similarity matrix, zero out negative edges and within-tissue edges
-null_size=100
+null_size=10
 T_mat=corr(MA_resid); T_mat(find(T_mat<0))=0; 
 T_mat(find(censor_mat==1))=0;
 results=compute_SF(T_mat,ind,null_size);
@@ -391,7 +391,7 @@ results=compute_SF(T_mat,ind,null_size);
 coords=load('Cortical_MNI_coords.csv'); 
 
 % Here set main parameters for the plots
-clus_radius=[6:15]; make_Z_cn=1; omit_rsfMRI=1;
+clus_radius=[6:15]; make_Z_cn=0; omit_rsfMRI=0;
 for r = 1:length(clus_radius),
     for n=1:null_size
         ind_rand(n)=ind;
