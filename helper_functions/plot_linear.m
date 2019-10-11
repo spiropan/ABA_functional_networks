@@ -13,5 +13,5 @@ colstr = sprintf('o%s',col);
 
 % uncomment below if want to plot all points
 %plot(xFitting,yFitted,col,x,y,'k*','MarkerSize',5);
-plot(xFitting,yFitted,col,'LineWidth',3);
+plot(xFitting,yFitted,col,'LineWidth',1);
 xlim([min(x)-padding,max(x)+padding]);

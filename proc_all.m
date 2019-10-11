@@ -202,7 +202,7 @@ set(h,'XTickLabel',{'','Tissue','<4 mm','<8 mm','<12 mm','<16 mm','<20 mm','<24 
 % T-W         = light grey, 
 % Order in ind.Wi is dDMN, Salience, Sensorimotor, Visuospatial
 ABA_dir='/nfs/zorba/ABA/Norm_March13/';
-files_dir='/home/spantazatos/Dropbox/Postdoc/Science_Commentary/';
+files_dir='/home/spantazatos/ABA_functional_networks/';
 if ~exist('MA_resid')
     load([ABA_dir '/Science_Paper_MA_resid.mat']);
 end
@@ -281,10 +281,32 @@ ylabel('Tissue-tissue correlation','fontsize',16)
 [B,dev,stats]=glmfit(tot_dis_vec,tot_exp_vec);
 [rho,pval]=corr(tot_dis_vec,tot_exp_vec);
 
+% Here show median tissue correlations to show non-linear relationship with distance
+dis_bins=[0:8:160]; medians_vec=[];
+for d=1:length(dis_bins)-1
+    inds=find(tot_dis_vec>dis_bins(d) & tot_dis_vec<dis_bins(d+1));
+    medians_vec(d)=median(tot_exp_vec(inds));
+end
+plot([1:length(medians_vec)],medians_vec,'ko-')
+h=gca;
+set(h, 'XTick', [1:2:length(medians_vec)])
+% set(h,'XTickLabel',{'0-8','8-16','16-24','24-32','32-40','40-48',...
+%     '48-56','56-64','64-72','72-80','80-88','88-96','96-104','104-112','112-120',...
+%     '120-128','128-136','136-144','144-152','152-160'},'fontsize',10)
+tick_labels={'0-8','8-16','16-24','24-32','32-40','40-48',...
+            '48-56','56-64','64-72','72-80','80-88','88-96','96-104','104-112','112-120',...
+            '120-128','128-136','136-144','144-152','152-160'};
+set(h,'XTickLabel',tick_labels(1:2:end),'fontsize',10)
+
+hold on; plot_linear([1:length(medians_vec)],medians_vec,'k');
+ylabel('Median tissue-tissue correlation')
+xlabel('Distance bins (every 8 mm)')
+title('Tissue-tissue correlation vs. distance')
+
 % here examine differences in distance between Wi and T-W
-DWi_mean=mean(DWi_vec)
-DTW_mean=mean(DTW_vec)
-[h,p,ci,stats]=ttest2(DWi_vec, DTW_vec)
+DWi_mean=mean(DWi_vec);
+DTW_mean=mean(DTW_vec);
+[h,p,ci,stats]=ttest2(DWi_vec, DTW_vec);
 
 %% Here can try regressing out distance as well
 ABA_dir='/nfs/zorba/ABA/Norm_March13/';
@@ -348,30 +370,32 @@ cons_DS=DS_genes.data(ia,4); % Index 4 is for cerebral cortex
 genes=genes(ib);
 
 %% Here run simulation for randomly selected clusters
-%ABA_dir='/nfs/zorba/ABA/Norm_March13/'
-ABA_dir='C:\Users\spiropan\Documents\Norm_March13\' % '/nfs/zorba/ABA/Norm_March13/'
+clear
+ABA_dir='/nfs/zorba/ABA/Norm_March13/'
+%ABA_dir='C:\Users\spiropan\Documents\Norm_March13\' % '/nfs/zorba/ABA/Norm_March13/'
 
 if ~exist('MA_resid')
     load([ABA_dir 'Science_Paper_MA_resid.mat'])
 end
-addpath(['.\helper_functions'])
+addpath(['./helper_functions'])
 
 % Replicate primary analyses in Richiardi et. al. 
 % Compute the total tissue similarity matrix, zero out negative edges and within-tissue edges
-null_size=20
+null_size=100
 T_mat=corr(MA_resid); T_mat(find(T_mat<0))=0; 
 T_mat(find(censor_mat==1))=0;
 results=compute_SF(T_mat,ind,null_size);
 
-% here create 100 random networks and replace the ind.W_all cell array and 
+% Here create null_size random networks and replace the ind.W_all cell array and 
 % recompute the SF each time
 coords=load('Cortical_MNI_coords.csv'); 
 
-clus_radius=[6:15];
+% Here set main parameters for the plots
+clus_radius=[6:15]; make_Z_cn=1; omit_rsfMRI=1;
 for r = 1:length(clus_radius),
-    for n=1:20
+    for n=1:null_size
         ind_rand(n)=ind;
-        [tmp]=random_clusters(coords,dat,clus_radius(r));
+        [tmp]=random_clusters(coords,dat,clus_radius(r),make_Z_cn,omit_rsfMRI);
         %tmp=random_clusters_orig();
         ind_rand(n).W_all=tmp.W_all;
         ind_rand(n).Wi=tmp.Wi;
@@ -381,27 +405,44 @@ for r = 1:length(clus_radius),
     end
     
     % plot the distances for a sample simulated network as in Figure 1 of the reply from Richiardi (2017)
-    [median_real(r),median_dist_rand(r),medians_dist_rand{r}]=plot_distances(ind,ind_rand,D);
+    % (add ind_rand(1) to make the plot just for one simulated network.
+    % Otherwise the boxplot will combine across all null networks which we
+    % don't want
+    [median_real(r),median_dist_rand(r),medians_dist_rand{r},W_edge_distances{r}]=plot_distances(ind,ind_rand,D);
 
-    disp('percent of null networks with SF <0.05 uncorrected')
+    disp('percent of null networks with sig SF uncorrected')
+    thr=1/null_size;
     for n=1:length(results_rand), pval_vec(n)=results_rand(n).pvalue; end
-    perc_sig(r)=length(find(pval_vec<0.05))/length(pval_vec);
+    perc_sig(r)=length(find(pval_vec<thr))/length(pval_vec);
     median_W_samples(r)=median(num_W_samples);
     median_Wi_samples(r)=median(num_Wi_samples);
 end
 
 disp('correlation between percent significance and cluster size is:')
-[r,p]=corr(perc_sig',clus_radius')
+[cor,p]=corr(perc_sig',clus_radius')
 
 disp('correlation between clus radius and median number of W samples:')
-[r,p]=corr(median_Wi_samples',clus_radius')
+[cor,p]=corr(median_Wi_samples',clus_radius')
 
 disp('correlation between percent significant SFs and median number of W samples:')
-[r,p]=corr(median_W_samples',perc_sig')
+[cor,p]=corr(median_W_samples',perc_sig')
 
 disp('correlation between percent significant SFs and median number of Wi samples:')
-[r,p]=corr(median_Wi_samples',perc_sig')
+[cor,p]=corr(median_Wi_samples',perc_sig')
 
-save(['Random_Results_nullsize_' int2str(null_size) '-' date],'results_rand','results')
+save(['Rand_null_' int2str(null_size) '-makeZ_cn-' int2str(make_Z_cn) '-omit_rsfMRI-' int2str(omit_rsfMRI)],...
+    'results_rand','results','ind_rand','median_dist_rand','medians_dist_rand','median_W_samples',...
+    'median_Wi_samples','perc_sig','clus_radius','ind','W_edge_distances')
 
+
+%% Here generate the plots for the 2019 reply
+
+%f1='/home/spantazatos/ABA_functional_networks/Random_Results_nullsize_200-10-Oct-2019.mat'
+f1='/home/spantazatos/ABA_functional_networks/Rand_null_20-makeZ_cn-0-omit_rsfMRI-0.mat'
+f2='/home/spantazatos/ABA_functional_networks/Rand_null_20-makeZ_cn-1-omit_rsfMRI-0.mat'
+f3='/home/spantazatos/ABA_functional_networks/Rand_null_20-makeZ_cn-1-omit_rsfMRI-1.mat'
+
+files={f1,f2,f3}
+
+plot_correlations_cluster_size(files,{'All','Z-cn','omit-RS'})
 
