@@ -5,7 +5,7 @@ function [X,G] = return_XG(ind,D);
 G=[]; X=[];
 nets_ind=ind.W;
 for n=1:length(nets_ind)
-    N=ind.W_all{nets_ind(n)} % store the indeces of the nodes for each network
+    N=ind.W_all{nets_ind(n)}; % store the indeces of the nodes for each network
     net_dis=D(N,N); % isolate the distances for nodes within each network
     % extract lower triangle of those distances and turn into vec
     tmp=get_indeces(length(N));
