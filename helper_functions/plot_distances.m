@@ -29,15 +29,15 @@ for n=1:length(ind_rand)
 end
 
 % comment out below if don't need the plots
-% subplot(2,1,1);
-% boxplot(X_real,grouping);
-% ylabel('Edge distance (mm)')
-% title('Resting state fMRI networks')
-% 
-% subplot(2,1,2);
-% boxplot(X_rand,G_rand);
-% ylabel('Edge distance (mm)')
-% title('Simulated networks')
+subplot(2,1,1);
+boxplot(X_real,grouping);
+ylabel('Edge distance (mm)')
+title('Resting state fMRI networks')
+
+subplot(2,1,2);
+boxplot(X_rand,G_rand);
+ylabel('Edge distance (mm)')
+title('Simulated networks')
 % 
 % disp('median distance of the real W')
 median_real=median(X_real);

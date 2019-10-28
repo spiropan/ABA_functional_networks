@@ -15,7 +15,7 @@ function [out] = random_clusters(coords,dat,radius,make_Z_cn,omit_rsfMRI,scale_f
 % networks as shown in Figure 1 of our 2019 reply in boxplot form and also Figure 1 in the 2017 reply
 % from Richiardi et. al.  
 
-% User settable parameters below. Networks can be comprised of 1, 2 or 3 clusters. 
+% Set parameters below. Networks can be comprised of 1, 2 or 3 clusters. 
 %  -------------------------------------------------------------------------------
 num_threeClus_nets=round(9*scale_factor); num_twoClus_nets=round(scale_factor*3); num_oneClus_nets=round(scale_factor*1); % These should add to 13
 make_centers_Z_restOfBrain=make_Z_cn; % Will be set to one of omit_rsfMRI_samples is also set to 1

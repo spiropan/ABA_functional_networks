@@ -201,7 +201,7 @@ set(h,'XTickLabel',{'','Tissue','<4 mm','<8 mm','<12 mm','<16 mm','<20 mm','<24 
 % Wi          = dark grey, 
 % T-W         = light grey, 
 % Order in ind.Wi is dDMN, Salience, Sensorimotor, Visuospatial
-%ABA_dir='/nfs/zorba/ABA/Norm_March13/';
+ABA_dir='/nfs/zorba/ABA/Norm_March13/';
 %files_dir='/home/spantazatos/ABA_functional_networks/';
 if ~exist('MA_resid')
     load([ABA_dir '/Science_Paper_MA_resid.mat']);
@@ -215,9 +215,7 @@ D_mat=D;
 D_mat(find(T_mat<0))=NaN; % Make sure to do D_mat first here
 T_mat(find(T_mat<0))=NaN; 
 
-% Here create a figure 
 % here remove tissue-tissue connections
-
 T_mat(find(censor_mat==1))=NaN;
 D_mat(find(censor_mat==1))=NaN;
 
@@ -384,14 +382,17 @@ addpath(['helper_functions'])
 % Compute the total tissue similarity matrix, zero out negative edges and within-tissue edges
 disp('working on real data')
 tic
+% Here set the # shuffles for SF signifance and also number of random
+% networks to simulate
 null_size=1000; num_rand_nets=1000;
 T_mat=corr(MA_resid); T_mat(find(T_mat<0))=0; 
 T_mat(find(censor_mat==1))=0;
 results=compute_SF(T_mat,ind,null_size);
 toc
 
-% Here create null_size random networks and replace the ind.W_all cell array and 
-% recompute the SF each time
+% Here simulate the networks, replacing the ind.W_all cell array and 
+% recomputing the SF each time. 'e' iterates over the 3 experiment types
+% described in the 2019 reply. 
 coords=load('Cortical_MNI_coords.csv'); 
 tic
 for e=1:3
@@ -424,7 +425,7 @@ for e=1:3
         % (add ind_rand(1) to make the plot just for one simulated network.
         % Otherwise the boxplot will combine across all null networks which we
         % don't want
-        [median_real(r),median_dist_rand(r),medians_dist_rand{r},W_edge_distances{r}]=plot_distances(ind,ind_rand,D);
+        [median_real(r),median_dist_rand(r),medians_dist_rand{r},W_edge_distances{r}]=plot_distances(ind,ind_rand(1),D);
         
         clus_results(['ind_rand-' int2str(clus_radius(r)) '-mm'])=ind_rand; clus_results(['results_rand-' int2str(clus_radius(r)) '-mm'])=results_rand;
         
@@ -440,8 +441,8 @@ for e=1:3
         'median_Wi_samples','perc_sig','clus_radius','ind','W_edge_distances')
     end
 
-    disp('correlation between percent significance and cluster size is:')
-    [cor,p]=corr(perc_sig',clus_radius')
+%     disp('correlation between percent significance and cluster size is:')
+%     [cor,p]=corr(perc_sig',clus_radius')
 
 end
 toc
