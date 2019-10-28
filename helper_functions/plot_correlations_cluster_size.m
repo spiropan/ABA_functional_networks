@@ -20,7 +20,7 @@ kill_figures
 
 labels=[labels 'rsfMRI'];
 
-h=gobjects(4,1);
+h=gobjects(length(files)+1,1);
 
 for f=1:length(files)
     

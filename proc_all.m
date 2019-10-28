@@ -369,7 +369,85 @@ DS_genes=importdata([files_dir '/DS_genes_local.csv'])
 cons_DS=DS_genes.data(ia,4); % Index 4 is for cerebral cortex
 genes=genes(ib);
 
-%% Here run simulation for randomly selected clusters
+%% Here run three types of experiments for (updated) network simulations and test cluster
+% size effect on significant SF FPR
+
+ABA_dir='/nfs/zorba/ABA/Norm_March13/'
+%ABA_dir='C:\Users\spiropan\Documents\Norm_March13\' % '/nfs/zorba/ABA/Norm_March13/'
+
+if ~exist('MA_resid')
+    load([ABA_dir 'Science_Paper_MA_resid.mat'])
+end
+addpath(['helper_functions'])
+
+% Replicate primary analyses in Richiardi et. al. 2015
+% Compute the total tissue similarity matrix, zero out negative edges and within-tissue edges
+disp('working on real data')
+tic
+null_size=1000; num_rand_nets=1000;
+T_mat=corr(MA_resid); T_mat(find(T_mat<0))=0; 
+T_mat(find(censor_mat==1))=0;
+results=compute_SF(T_mat,ind,null_size);
+toc
+
+% Here create null_size random networks and replace the ind.W_all cell array and 
+% recompute the SF each time
+coords=load('Cortical_MNI_coords.csv'); 
+tic
+for e=1:3
+    % Here set main parameters for the plots
+    clus_radius=[6:15];
+    if ~exist('clus_results')
+        clus_results=containers.Map;
+    end
+    if e==1,
+        make_Z_cn=0; omit_rsfMRI=0;
+    elseif e==2,
+        make_Z_cn=1; omit_rsfMRI=1;
+    else
+        make_Z_cn=1; omit_rsfMRI=0;
+    end
+       
+    for r = 1:length(clus_radius),
+        disp(['working on cluster size: ' int2str(clus_radius(r)) ' mm, for experiment ' int2str(e)])
+        parfor (n=1:num_rand_nets, 12)
+            ind_rand(n)=ind;
+            tmp(n)=random_clusters(coords,dat,clus_radius(r),make_Z_cn,omit_rsfMRI,1);
+            ind_rand(n).W_all=tmp(n).W_all;
+            ind_rand(n).Wi=tmp(n).Wi;
+            [results_rand(n)]=compute_SF(T_mat,ind_rand(n),null_size);
+            num_W_samples(n)=length(cat(2,tmp(n).W_all{[1:8,10:end]}));
+            num_Wi_samples(n)=length(cat(2,tmp(n).W_all{[tmp(n).Wi]}));
+        end
+
+        % plot the distances for a sample simulated network as in Figure 1 of the reply from Richiardi (2017)
+        % (add ind_rand(1) to make the plot just for one simulated network.
+        % Otherwise the boxplot will combine across all null networks which we
+        % don't want
+        [median_real(r),median_dist_rand(r),medians_dist_rand{r},W_edge_distances{r}]=plot_distances(ind,ind_rand,D);
+        
+        clus_results(['ind_rand-' int2str(clus_radius(r)) '-mm'])=ind_rand; clus_results(['results_rand-' int2str(clus_radius(r)) '-mm'])=results_rand;
+        
+        %disp('percent of null networks with sig SF uncorrected')
+        thr=1/null_size;
+        for n=1:length(results_rand), pval_vec(n)=results_rand(n).pvalue; end
+        perc_sig(r)=length(find(pval_vec<thr))/length(pval_vec);
+        median_W_samples(r)=median(num_W_samples);
+        median_Wi_samples(r)=median(num_Wi_samples);
+        
+        save(['Rand_null-' int2str(null_size) '-num-nets-' int2str(num_rand_nets) '-makeZ_cn-' int2str(make_Z_cn) '-omit_rsfMRI-' int2str(omit_rsfMRI)],...
+        'results_rand','results','ind_rand','median_dist_rand','medians_dist_rand','median_W_samples','clus_results',...
+        'median_Wi_samples','perc_sig','clus_radius','ind','W_edge_distances')
+    end
+
+    disp('correlation between percent significance and cluster size is:')
+    [cor,p]=corr(perc_sig',clus_radius')
+
+end
+toc
+
+%% This cell is same as above except here the cluster radius is kept at 6 mm while varying the number of clusters (and W samples)
+% to see if it affects the significant SF FPR
 clear
 ABA_dir='/nfs/zorba/ABA/Norm_March13/'
 %ABA_dir='C:\Users\spiropan\Documents\Norm_March13\' % '/nfs/zorba/ABA/Norm_March13/'
@@ -381,102 +459,55 @@ addpath(['helper_functions'])
 
 % Replicate primary analyses in Richiardi et. al. 
 % Compute the total tissue similarity matrix, zero out negative edges and within-tissue edges
-null_size=200
+null_size=200; num_rand_nets=200;
 T_mat=corr(MA_resid); T_mat(find(T_mat<0))=0; 
 T_mat(find(censor_mat==1))=0;
-results=compute_SF(T_mat,ind,null_size);
+results=compute_SF(T_mat,ind,null_size); 
 
-% Here create null_size random networks and replace the ind.W_all cell array and 
-% recompute the SF each time
 coords=load('Cortical_MNI_coords.csv'); 
+tic
+clus_radius=[6]; make_Z_cn=0; omit_rsfMRI=0; scale_factor=[1:0.5:5];
+for s = 1:length(scale_factor),
+        disp(['working on scale factor: ' num2str(scale_factor(s),3)])
+        for n=1:num_rand_nets,
+            ind_rand(n)=ind;
+            tmp(n)=random_clusters(coords,dat,clus_radius(1),make_Z_cn,omit_rsfMRI,scale_factor(s));
+            %tmp=random_clusters_orig();
+            ind_rand(n).W_all=tmp(n).W_all;
+            ind_rand(n).Wi=tmp(n).Wi;
+            [results_rand(n)]=compute_SF(T_mat,ind_rand(n),null_size);
+            num_W_samples(n)=length(cat(2,tmp(n).W_all{[1:8,10:end]}));
+            num_Wi_samples(n)=length(cat(2,tmp(n).W_all{[tmp(n).Wi]}));
+        end
 
-% Here set main parameters for the plots
-clus_radius=[6:15]; make_Z_cn=1; omit_rsfMRI=1;
-for r = 1:length(clus_radius),
-    for n=1:null_size
-        ind_rand(n)=ind;
-        [tmp]=random_clusters(coords,dat,clus_radius(r),make_Z_cn,omit_rsfMRI);
-        %tmp=random_clusters_orig();
-        ind_rand(n).W_all=tmp.W_all;
-        ind_rand(n).Wi=tmp.Wi;
-        [results_rand(n)]=compute_SF(T_mat,ind_rand(n),null_size);
-        num_W_samples(n)=length(cat(2,tmp.W_all{[1:8,10:end]}));
-        num_Wi_samples(n)=length(cat(2,tmp.W_all{[tmp.Wi]}));
+        % plot the distances for a sample simulated network as in Figure 1 of the reply from Richiardi (2017)
+        % (add ind_rand(1) to make the plot just for one simulated network.
+        % Otherwise the boxplot will combine across all null networks which we
+        % don't want
+        [median_real(s),median_dist_rand(s),medians_dist_rand{s},W_edge_distances{s}]=plot_distances(ind,ind_rand,D);
+
+        %disp('percent of null networks with sig SF uncorrected')
+        thr=1/null_size;
+        for n=1:length(results_rand), pval_vec(n)=results_rand(n).pvalue; end
+        perc_sig(s)=length(find(pval_vec<thr))/length(pval_vec);
+        median_W_samples(s)=median(num_W_samples);
+        median_Wi_samples(s)=median(num_Wi_samples);
     end
-    
-    % plot the distances for a sample simulated network as in Figure 1 of the reply from Richiardi (2017)
-    % (add ind_rand(1) to make the plot just for one simulated network.
-    % Otherwise the boxplot will combine across all null networks which we
-    % don't want
-    [median_real(r),median_dist_rand(r),medians_dist_rand{r},W_edge_distances{r}]=plot_distances(ind,ind_rand,D);
 
-    disp('percent of null networks with sig SF uncorrected')
-    thr=1/null_size;
-    for n=1:length(results_rand), pval_vec(n)=results_rand(n).pvalue; end
-    perc_sig(r)=length(find(pval_vec<thr))/length(pval_vec);
-    median_W_samples(r)=median(num_W_samples);
-    median_Wi_samples(r)=median(num_Wi_samples);
-end
+    disp('correlation between percent significance and median_W_samples is:')
+    [cor,p]=corr(perc_sig',median_W_samples')
 
-disp('correlation between percent significance and cluster size is:')
-[cor,p]=corr(perc_sig',clus_radius')
+    save(['Rand_null-' int2str(null_size) '-num-nets-' int2str(num_rand_nets) '-clus-radius-6-scale-factors'],...
+        'results_rand','results','ind_rand','median_dist_rand','medians_dist_rand','median_W_samples',...
+        'median_Wi_samples','perc_sig','clus_radius','ind','W_edge_distances','scale_factor')
 
-disp('correlation between clus radius and median number of W samples:')
-[cor,p]=corr(median_Wi_samples',clus_radius')
-
-disp('correlation between percent significant SFs and median number of W samples:')
-[cor,p]=corr(median_W_samples',perc_sig')
-
-disp('correlation between percent significant SFs and median number of Wi samples:')
-[cor,p]=corr(median_Wi_samples',perc_sig')
-
-save(['Rand_null_' int2str(null_size) '-makeZ_cn-' int2str(make_Z_cn) '-omit_rsfMRI-' int2str(omit_rsfMRI)],...
-    'results_rand','results','ind_rand','median_dist_rand','medians_dist_rand','median_W_samples',...
-    'median_Wi_samples','perc_sig','clus_radius','ind','W_edge_distances')
 
 %% Here generate the plots for the 2019 reply
 
-%f1='/home/spantazatos/ABA_functional_networks/Random_Results_nullsize_200-10-Oct-2019.mat'
-f1='/home/spantazatos/ABA_functional_networks/Rand_null_100-makeZ_cn-0-omit_rsfMRI-0.mat'
-f2='/home/spantazatos/ABA_functional_networks/Rand_null_100-makeZ_cn-1-omit_rsfMRI-0.mat'
-f3='/home/spantazatos/ABA_functional_networks/Rand_null_100-makeZ_cn-1-omit_rsfMRI-1.mat'
+f1='/home/spantazatos/ABA_functional_networks/Rand_null-1000-num-nets-1000-makeZ_cn-0-omit_rsfMRI-0.mat'
+f2='/home/spantazatos/ABA_functional_networks/Rand_null-1000-num-nets-1000-makeZ_cn-1-omit_rsfMRI-0.mat'
+f3='/home/spantazatos/ABA_functional_networks/Rand_null-1000-num-nets-1000-makeZ_cn-1-omit_rsfMRI-1.mat'
 
 files={f1,f2,f3};
 
-f1='/home/spantazatos/ABA_functional_networks/Rand_null_1-makeZ_cn-0-omit_rsfMRI-0.mat'
-f2='/home/spantazatos/ABA_functional_networks/Rand_null_1-makeZ_cn-1-omit_rsfMRI-0.mat'
-f3='/home/spantazatos/ABA_functional_networks/Rand_null_1-makeZ_cn-1-omit_rsfMRI-1.mat'
-
-dis_files={f1,f2,f3};
-
-plot_correlations_cluster_size(files,{'All','Z-cn','omit-RS'},dis_files)
-
-%% Here compare the simulated networks with sig SF vs. those without by comparing number of W edges
-hipval_inds=find(pval_vec>0.01);
-lopval_inds=find(pval_vec<0.01);
-num_W_edges=[];
-num_Wi_edges=[];
-for i=1:length(pval_vec),
-    W_ind=cat(2,ind_rand(i).W_all{[1:8,10:end]});
-    Wi_ind=cat(2,ind_rand(i).W_all{[ind_rand(i).Wi]});
-    
-    W_mat=T_mat(W_ind,W_ind); N=size(W_mat,1); num_W_edges(i)=length(find(W_mat(get_indeces(N))>0));
-    Wi_mat=T_mat(Wi_ind,Wi_ind); N=size(Wi_mat,1); num_Wi_edges(i)=length(find(Wi_mat(get_indeces(N))>0));
-
-end
-
-[h,p,ci,stats]=ttest2(num_W_edges(hipval_inds),num_W_edges(lopval_inds))
-
-[h,p,ci,stats]=ttest2(num_Wi_edges(hipval_inds),num_Wi_edges(lopval_inds))
-
-scatter(num_Wi_edges,pval_vec)
-
-% here for real ind
-W_ind=cat(2,ind.W_all{[1:8,10:end]});
-Wi_ind=cat(2,ind.W_all{[ind.Wi]});
-    
-W_mat=T_mat(W_ind,W_ind); N=size(W_mat,1); num_W_edges_real=length(find(W_mat(get_indeces(N))>0));
-Wi_mat=T_mat(Wi_ind,Wi_ind); N=size(Wi_mat,1); num_Wi_edges_real=length(find(Wi_mat(get_indeces(N))>0));
-
-
-
+plot_correlations_cluster_size(files,{'All','Z-cn','omit-RS'})

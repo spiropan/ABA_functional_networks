@@ -10,7 +10,7 @@ function [out] = compute_SF(T_mat, ind, null_size)
 real_SF = SF_calc(T_mat,ind);
 
 for i=1:null_size
-    disp(['working on null iteration: ' int2str(i)])
+    %disp(['working on null iteration: ' int2str(i)]);
     perm_ind=[];
     % here permute the samples columns of MA keeping structure of brain
     for d=1:length(ind.donor_ind)

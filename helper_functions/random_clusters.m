@@ -1,5 +1,5 @@
-function [out] = random_clusters(coords,dat,radius,make_Z_cn,omit_rsfMRI);
-% function [out] = random_clusters(coords,dat,radius,make_Z_cn,omit_rsfMRI);
+function [out] = random_clusters(coords,dat,radius,make_Z_cn,omit_rsfMRI,scale_factor);
+% function [out] = random_clusters(coords,dat,radius,make_Z_cn,omit_rsfMRI,scale_factor);
 
 % UPDATE: Richiardi et. al. in their reply noted that random clusters have
 % shorter distances on average than resting fMRI networks. So we'll
@@ -17,7 +17,7 @@ function [out] = random_clusters(coords,dat,radius,make_Z_cn,omit_rsfMRI);
 
 % User settable parameters below. Networks can be comprised of 1, 2 or 3 clusters. 
 %  -------------------------------------------------------------------------------
-num_threeClus_nets=9; num_twoClus_nets=3; num_oneClus_nets=1; % These should add to 13
+num_threeClus_nets=round(9*scale_factor); num_twoClus_nets=round(scale_factor*3); num_oneClus_nets=round(scale_factor*1); % These should add to 13
 make_centers_Z_restOfBrain=make_Z_cn; % Will be set to one of omit_rsfMRI_samples is also set to 1
 omit_rsfMRI_samples=omit_rsfMRI; % This will ensure no rsfMRI samples are included in either Wi, W or T edges
 % ----------------------------------------------------------------------
@@ -46,10 +46,10 @@ for c=1:num_clusters,
         dd=0; % initialize the distance between clus_centers
         while min(dd) <= dis_btw_clus % Keep finding new ind until distance is greater than dis_btw_clus
             if make_centers_Z_restOfBrain==1
-                disp('assigning new cluster in Z_restOfBrain')
+                %disp('assigning new cluster in Z_restOfBrain')
                 ind=inds_Z_restOfBrain(randi(length(inds_Z_restOfBrain))); % find random cluster center in Z_restOfBrain
             else
-                disp('assigning new cluster')
+                %disp('assigning new cluster')
                 ind=ceil(rand(1)*num_pts); % Find a random cluster center
             end
             for p=1:size(clus_centers,1)                       
@@ -59,13 +59,13 @@ for c=1:num_clusters,
         clus_centers(c,:)=coords(ind,:);
         clus_centers_ind(c,1)=ind;
     else
-        disp('assigned first cluster')
+        %disp('assigned first cluster')
         % This for the first point
         if make_centers_Z_restOfBrain==1
-            disp('assigning first cluster in Z_restOfBrain')
+            %disp('assigning first cluster in Z_restOfBrain')
         	ind=inds_Z_restOfBrain(randi(length(inds_Z_restOfBrain))); % find random cluster center in Z_restOfBrain
         else
-            disp('assigning new cluster')
+            %disp('assigning new cluster')
             ind=ceil(rand(1)*num_pts); % Find a random cluster center
         end
         clus_centers(c,:)=coords(ind,:); 

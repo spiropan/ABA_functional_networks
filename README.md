@@ -6,3 +6,10 @@ contained in the helper_functions directory
 
 Data_File_S1(2).txt:  Supplementary Files S1(2) from Richiardi et. al.
 
+This code was updated in fall of 2019 in response the reply by Richiardi et. al.
+to our 2017 commentary. The updates include new random network simulations with longer 
+edge distance distributions and simulations that examine the effects of resting state
+fMRI on significant SF frequencies among the simulated networks. The updated code
+is mostly contained the last 3 cells of the proc_all.m file as well as in the 
+helper_functions/random_clusters.m file. 
+
