@@ -13,3 +13,5 @@ fMRI on significant SF frequencies among the simulated networks. The updated cod
 is mostly contained the last 3 cells of the proc_all.m file as well as in the 
 helper_functions/random_clusters.m file. 
 
+The Python code and Jupyter Notebook for running the spatial autocorrelation analyses are contained in the [spatial_autocorrelations](https://github.com/spiropan/ABA_functional_networks/blob/master/spatial_autocorrelations/spatial_autocorrelation.ipynb) subfolder. 
+
